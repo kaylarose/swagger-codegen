@@ -14,6 +14,7 @@ public class JavaClientCodegen extends AbstractJavaCodegen {
     private static final Logger LOGGER = LoggerFactory.getLogger(JavaClientCodegen.class);
 
     public static final String USE_RX_JAVA = "useRxJava";
+    public static final String GENERATE_DEFAULT_HTTP_CLIENT = "generateDefaultHttpClient";
     public static final String PARCELABLE_MODEL = "parcelableModel";
 
     public static final String RETROFIT_1 = "retrofit";
@@ -22,6 +23,7 @@ public class JavaClientCodegen extends AbstractJavaCodegen {
     protected String gradleWrapperPackage = "gradle.wrapper";
     protected boolean useRxJava = false;
     protected boolean parcelableModel = false;
+    protected boolean generateDefaultHttpClient = false;
 
     public JavaClientCodegen() {
         super();
@@ -32,6 +34,7 @@ public class JavaClientCodegen extends AbstractJavaCodegen {
         apiPackage = "io.swagger.client.api";
         modelPackage = "io.swagger.client.model";
 
+        cliOptions.add(CliOption.newBoolean(GENERATE_DEFAULT_HTTP_CLIENT, "Whether to generate a default HttpClient implementation using OkHttp3. For use with rx-abstract-httpclient-gson."));
         cliOptions.add(CliOption.newBoolean(USE_RX_JAVA, "Whether to use the RxJava adapter with the retrofit2 library."));
         cliOptions.add(CliOption.newBoolean(PARCELABLE_MODEL, "Whether to generate models for Android that implement Parcelable with the okhttp-gson library."));
 
@@ -39,7 +42,7 @@ public class JavaClientCodegen extends AbstractJavaCodegen {
         supportedLibraries.put("feign", "HTTP client: Netflix Feign 8.16.0. JSON processing: Jackson 2.7.0");
         supportedLibraries.put("jersey2", "HTTP client: Jersey client 2.22.2. JSON processing: Jackson 2.7.0");
         supportedLibraries.put("okhttp-gson", "HTTP client: OkHttp 2.7.5. JSON processing: Gson 2.6.2. Enable Parcelable modles on Android using '-DparcelableModel=true'");
-        supportedLibraries.put("rx-abstract-httpclient-gson", "HTTP client: Interface Only. JSON processing: Gson 2.6.1");
+        supportedLibraries.put("rx-abstract-httpclient-gson", "HTTP client: Interface Only. RxJava 1.1.6. JSON processing: Gson 2.7.0. Use '-DgenerateDefaultHttpClient=true' to generate a default HttpClient implementation dependent on OkHttp3 ");
         supportedLibraries.put(RETROFIT_1, "HTTP client: OkHttp 2.7.5. JSON processing: Gson 2.3.1 (Retrofit 1.9.0). IMPORTANT NOTE: retrofit1.x is no longer actively maintained so please upgrade to 'retrofit2' instead.");
         supportedLibraries.put(RETROFIT_2, "HTTP client: OkHttp 3.2.0. JSON processing: Gson 2.6.1 (Retrofit 2.0.2). Enable the RxJava adapter using '-DuseRxJava=true'. (RxJava 1.1.3)");
 
@@ -76,6 +79,9 @@ public class JavaClientCodegen extends AbstractJavaCodegen {
         }
         if (additionalProperties.containsKey(PARCELABLE_MODEL)) {
             this.setParcelableModel(Boolean.valueOf(additionalProperties.get(PARCELABLE_MODEL).toString()));
+        }
+        if (additionalProperties.containsKey(GENERATE_DEFAULT_HTTP_CLIENT)) {
+            this.setGenerateDefaultHttpClient(Boolean.valueOf(additionalProperties.get(GENERATE_DEFAULT_HTTP_CLIENT).toString()));
         }
         // put the boolean value back to PARCELABLE_MODEL in additionalProperties
         additionalProperties.put(PARCELABLE_MODEL, parcelableModel);
@@ -155,8 +161,9 @@ public class JavaClientCodegen extends AbstractJavaCodegen {
             // supportingFiles.add(new SupportingFile("apiException.mustache", invokerFolder, "ApiException.java"));
             supportingFiles.add(new SupportingFile("Pair.mustache", invokerFolder, "Pair.java"));
             supportingFiles.add(new SupportingFile("auth/Authentication.mustache", authFolder, "Authentication.java"));
-            supportingFiles.add(new SupportingFile("auth/OAuthOkHttpClient.mustache", authFolder, "OAuthOkHttpClient.java"));
-
+            if (generateDefaultHttpClient == true) {
+                supportingFiles.add(new SupportingFile("OkHttpServiceClient.mustache", invokerFolder, "OkHttpServiceClient.java"));
+            }
             additionalProperties.put("gson", "true");
         } else {
             LOGGER.error("Unknown library option (-l/--library): " + getLibrary());
@@ -251,4 +258,7 @@ public class JavaClientCodegen extends AbstractJavaCodegen {
     public void setParcelableModel(boolean parcelableModel) {
         this.parcelableModel = parcelableModel;
     }
+
+    public void setGenerateDefaultHttpClient(boolean generateDefaultHttpClient) { this.generateDefaultHttpClient = generateDefaultHttpClient; }
+
 }
